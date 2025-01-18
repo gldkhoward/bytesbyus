@@ -1,0 +1,9 @@
+# requirements.txt
+fastapi==0.109.2
+uvicorn==0.27.1
+pydantic==2.6.1
+python-dotenv==1.0.0
+httpx==0.26.0
+python-multipart==0.0.6
+# If you need CORS (which you likely will)
+starlette==0.36.3
