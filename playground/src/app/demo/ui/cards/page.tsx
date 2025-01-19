@@ -1,6 +1,7 @@
 // src/app/demo/ui/cards/page.tsx
 import React from 'react';
 import { ContentCard } from '@/components/common/cards/ContentCard';
+import { TechArticleCard } from '@/components/content/tech/BlogCard';
 
 const demoContent = [
   {
@@ -61,6 +62,30 @@ const demoContent = [
   }
 ];
 
+const article = {
+    coverImage: "/path/to/image.jpg",
+    tags: [
+      { text: "React", isPrimary: true },
+      { text: "Tutorial", isPrimary: false },
+      { text: "TypeScript", isPrimary: false }
+    ],
+    title: "Building a Modern React Application with TypeScript",
+    description: "A comprehensive guide to setting up and structuring a React application using TypeScript and modern best practices.",
+    metrics: {
+      forks: 45,
+      stars: 132,
+      version: "2.1.0",
+      readTime: 8,
+      comments: 23
+    },
+    author: {
+      name: "Jane Smith",
+      avatar: "/path/to/avatar.jpg",
+      handle: "janesmith"
+    },
+    publishDate: "Jan 15, 2024"
+  };
+
 export default function CardDemo() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-12 font-sans">
@@ -106,6 +131,14 @@ export default function CardDemo() {
                 description={`${demoContent[2].description} An authentic recipe passed down through generations, featuring fresh caught prawns and hand-ground spices. Perfect with steamed rice or crusty bread.`}
               />
             </div>
+          </div>
+        </section>
+
+        {/* Tech Article Card */}
+        <section>
+          <h2 className="text-xl font-semibold mb-6 text-stone-800">Tech Article Card</h2>
+          <div className="max-w-2xl w-96">
+            <TechArticleCard {...article} />
           </div>
         </section>
 
