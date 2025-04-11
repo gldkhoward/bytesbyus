@@ -30,6 +30,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={geistSans.className} suppressHydrationWarning>
+
       <body className="bg-background text-foreground">
         <ThemeProvider
           attribute="class"
@@ -51,7 +52,7 @@ export default function RootLayout({
                 </div>
               </nav>
               <div className="flex flex-col gap-20 max-w-5xl p-5">
-                {children}
+         {children}
               </div>
 
               <footer className="w-full flex items-center justify-center border-t mx-auto text-center text-xs gap-8 py-16">

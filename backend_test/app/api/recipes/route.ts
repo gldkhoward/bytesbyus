@@ -41,11 +41,6 @@ export async function GET(request: NextRequest) {
         version,
         is_verified,
         creator_id,
-        creator:profiles (
-          id,
-          username,
-          avatar_url
-        ),
         tags:recipe_tags (
           tag:tags (
             id,
@@ -120,11 +115,21 @@ export async function GET(request: NextRequest) {
       !recipe.is_private || recipe.creator_id === currentUserId
     ) || [];
     
-    // Transform the data to flatten the nested structure
+    // Get creator profiles
+    const creatorIds = Array.from(new Set(filteredRecipes.map(recipe => recipe.creator_id)));
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, username, avatar_url')
+      .in('id', creatorIds);
+    
+    // Create a map of creator profiles
+    const creatorMap = new Map(profiles?.map(profile => [profile.id, profile]) || []);
+    
+    // Transform the data to flatten the nested structure and add creator info
     const transformedRecipes = filteredRecipes.map(recipe => ({
       ...recipe,
       tags: recipe.tags?.map(rt => rt.tag) || [],
-      creator: recipe.creator || null
+      creator: creatorMap.get(recipe.creator_id) || null
     }));
     
     return NextResponse.json({
@@ -141,4 +146,110 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function POST(request: NextRequest) {
+    try {
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        const currentUserId = user?.id;
+
+        //If user is not authenticated, return error
+        if (!currentUserId) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const { title, description, servings, prep_time_minutes, cook_time_minutes, difficulty, is_private, is_verified, tag_ids, recipe_ingredients, recipe_steps } = await request.json();
+        
+        const { data: recipeData, error: recipeError } = await supabase
+            .from("recipes")
+            .insert({
+                title,
+                description,
+                servings,
+                prep_time_minutes,
+                cook_time_minutes,
+                difficulty,
+                is_private,
+                is_verified,
+                //user_id is automatically added by the schema, using auth.uid()
+                image_url: null,
+                version: 1,
+                branch_name: null, //Null is default for new recipies and is equivalent to 'main'
+            })
+            .select()
+            .single();
+
+        if (recipeError) {
+            throw recipeError;
+        }
+
+        const recipeId = recipeData.id;
+
+        //Inserting Recipe Tags
+        if (tag_ids && tag_ids.length > 0) {
+            const { error: tagError } = await supabase
+                .from("recipe_tags")
+                .insert(tag_ids.map((tag_id: string) => ({
+                    recipe_id: recipeId,
+                    tag_id,
+                    })));
+
+            if (tagError) {
+                throw tagError;
+            }
+        }
+
+        //Inserting Recipe Ingredients
+        if (recipe_ingredients && recipe_ingredients.length > 0) {
+            const { error: ingredientError } = await supabase
+                .from("recipe_ingredients")
+                .insert(recipe_ingredients.map((ingredient: any) => ({
+                    recipe_id: recipeId,
+                    name: ingredient.name,
+                    quantity: ingredient.quantity,
+                    unit_id: ingredient.unit_id,
+                    notes: ingredient.notes,
+                    is_optional: ingredient.is_optional,
+                    display_order: ingredient.display_order || null,
+                    ingredient_url: ingredient.ingredient_url || null,
+                    alternative_ingredient_id: ingredient.alternative_ingredient_id || null,
+                    })));
+
+            if (ingredientError) {
+                throw ingredientError;
+            }
+        }
+
+        //Inserting Recipe Steps
+        if (recipe_steps && recipe_steps.length > 0) {
+            const { error: stepError } = await supabase
+                .from("recipe_steps")
+                .insert(recipe_steps.map((step: any) => ({
+                    recipe_id: recipeId,
+                    step_number: step.step_number,
+                    instruction: step.instruction,
+                    image_url: step.image_url || null,
+                    timer_minutes: step.timer_minutes || null,
+                    })));
+            
+            if (stepError) {
+                throw stepError;
+            }
+        }
+
+
+
+
+        return NextResponse.json({
+            message: "Recipe created successfully",
+            recipe_id: recipeId,
+        }, { status: 201 });    
+    } catch (error) {
+        console.error("Error creating recipe:", error);
+        return NextResponse.json(
+            { error: "An unexpected error occurred during recipe creation via API" },
+            { status: 500 }
+        );
+    }
 }
