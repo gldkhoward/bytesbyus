@@ -39,7 +39,7 @@ CREATE TABLE recipes (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
   creator_id UUID NOT NULL REFERENCES auth.users(id) DEFAULT auth.uid() ON DELETE CASCADE,
-  
+  is_draft BOOLEAN DEFAULT true NOT NULL,
   -- Version control related fields
   parent_id UUID REFERENCES recipes(id) ON DELETE SET NULL,
   root_id UUID REFERENCES recipes(id) ON DELETE SET NULL,
@@ -239,8 +239,10 @@ WITH CHECK (
 );
 -- RLS Policies for recipes
 CREATE POLICY "Public recipes are viewable by everyone"
-ON recipes FOR SELECT USING (NOT is_private OR creator_id = auth.uid());
-
+ON recipes FOR SELECT USING (
+  (NOT is_private AND NOT is_draft) OR  -- Published and public recipes are visible to all
+  creator_id = auth.uid()               -- Own recipes (including drafts and private) are visible to creator
+);
 CREATE POLICY "Users can insert their own recipes"
 ON recipes FOR INSERT WITH CHECK (creator_id = auth.uid());
 
@@ -256,7 +258,7 @@ ON recipe_ingredients FOR SELECT
 USING (EXISTS (
   SELECT 1 FROM recipes
   WHERE recipes.id = recipe_ingredients.recipe_id
-  AND (NOT recipes.is_private OR recipes.creator_id = auth.uid())
+  AND ((NOT recipes.is_private AND NOT recipes.is_draft) OR recipes.creator_id = auth.uid())
 ));
 
 CREATE POLICY "Users can manage ingredients of their recipes"
@@ -273,7 +275,7 @@ ON recipe_steps FOR SELECT
 USING (EXISTS (
   SELECT 1 FROM recipes
   WHERE recipes.id = recipe_steps.recipe_id
-  AND (NOT recipes.is_private OR recipes.creator_id = auth.uid())
+  AND ((NOT recipes.is_private AND NOT recipes.is_draft) OR recipes.creator_id = auth.uid())
 ));
 
 CREATE POLICY "Users can manage steps of their recipes"
@@ -303,7 +305,7 @@ ON recipe_tags FOR SELECT
 USING (EXISTS (
   SELECT 1 FROM recipes
   WHERE recipes.id = recipe_tags.recipe_id
-  AND (NOT recipes.is_private OR recipes.creator_id = auth.uid())
+  AND ((NOT recipes.is_private AND NOT recipes.is_draft) OR recipes.creator_id = auth.uid())
 ));
 
 CREATE POLICY "Users can manage tags on their recipes"
@@ -320,7 +322,7 @@ ON recipe_stars FOR SELECT
 USING (EXISTS (
   SELECT 1 FROM recipes
   WHERE recipes.id = recipe_stars.recipe_id
-  AND (NOT recipes.is_private OR recipes.creator_id = auth.uid())
+  AND ((NOT recipes.is_private AND NOT recipes.is_draft) OR recipes.creator_id = auth.uid())
 ));
 
 CREATE POLICY "Users can star/unstar recipes"
@@ -333,7 +335,7 @@ ON recipe_comments FOR SELECT
 USING (EXISTS (
   SELECT 1 FROM recipes
   WHERE recipes.id = recipe_comments.recipe_id
-  AND (NOT recipes.is_private OR recipes.creator_id = auth.uid())
+  AND ((NOT recipes.is_private AND NOT recipes.is_draft) OR recipes.creator_id = auth.uid())
 ));
 
 CREATE POLICY "Users can add comments to viewable recipes"
@@ -343,7 +345,7 @@ WITH CHECK (
   EXISTS (
     SELECT 1 FROM recipes
     WHERE recipes.id = recipe_comments.recipe_id
-    AND (NOT recipes.is_private OR recipes.creator_id = auth.uid())
+    AND ((NOT recipes.is_private AND NOT recipes.is_draft) OR recipes.creator_id = auth.uid())
   )
 );
 
@@ -361,7 +363,7 @@ ON recipe_versions FOR SELECT
 USING (EXISTS (
   SELECT 1 FROM recipes
   WHERE recipes.id = recipe_versions.recipe_id
-  AND (NOT recipes.is_private OR recipes.creator_id = auth.uid())
+  AND ((NOT recipes.is_private AND NOT recipes.is_draft) OR recipes.creator_id = auth.uid())
 ));
 
 CREATE POLICY "Recipe creators can manage versions"
